@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecteur de Vidéos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-content: stretch;
+    justify-content: center;
+        }
+        .hidden {
+            display: none;
+        }
+        .sidebar {
+            min-width: 50vh;
+            padding: 20px;
+            border-radius: 12px;
+            overflow-y: auto;
+        }
+        .video-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .video-item {
+            margin-bottom: 10px;
+            cursor: pointer;
+            display: flex;
+            position: relative;
+            overflow: hidden;
+        }
+        .preview-container {
+            position: relative;
+            min-width: 180px;
+            height: 100px;
+            border-radius: 12px;
+            margin-right: 10px;
+            overflow: hidden;
+        }
+        .preview {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 12px;
+            z-index: 1; /* Ajouté pour s'assurer que la prévisualisation est au-dessus */
+        }
+        .preview-image {
+            width: 100%;
+            height: 100%;
+            border-radius: 12px;
+        }
+        .text-container {
+            flex-grow: 1;
+            height: 100px;
+            width: 180px;
+        }
+        .title {
+            margin: 0 0 5px;
+            font-family: Roboto, Arial, sans-serif;
+            font-weight: 500;
+        }
+        .channel {
+            font-family: Roboto, Arial, sans-serif;
+            font-size: 0.7rem;
+            margin-bottom: 3px;
+        }
+        .video-info {
+            font-size: 0.7rem;
+            margin: 10px 0;
+        }
+        .video-duration {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        .video-title {
+            font-size: 0.8rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            margin: 0;
+        }
+        /* Nouveau style pour les informations de la vidéo */
+        .video-info-container {
+            margin-top: 10px;
+        }
+        #video-info {
+        font-family: "Roboto", "Arial", sans-serif;
+        margin: 20px;
+        }
+
+#video-title {
+    font-size: 1.5em;
+    margin-bottom: 5px;
+}
+.video-info{
+    color: #777;
+}
+
+#video-channel {
+    font-weight: bold;
+    color: #333;
+}
+
+#video-views, #video-likes, #video-date {
+    color: #777;
+    font-size: 0.9em;
+}
+#videoDate{
+    margin: 0 0 15px 10px;
+    font-size: 0.9em;
+    font-weight: bold;
+}
+ #videoViews{
+    font-size: 0.8em;
+    font-weight: bold;
+    margin: 0 0 15px 0;
+}
+
+.video-channel {
+    font-size: 1rem;
+    color: #555;
+}
+
+.video-stats, .video-date {
+    font-size: 0.9rem;
+    color: #777;
+}
+.description-full{
+background: #f2f2f2;
+padding: 15px;
+border-radius: 10px;
+}
+.description{
+    margin-top: 10px;
+}
+#mainVideo{
+    border-radius: 15px;
+}
+
+    </style>
+</head>
+<body>
+    <input type="file" id="fileInput" webkitdirectory multiple accept="video/*,image/webp,application/json" style="display: none;">
+    <a class="select-button" id="selectButton" onclick="document.getElementById('fileInput').click()">Sélectionner un dossier de vidéos</a>
+
+    <div class="video-container hidden" id="videoContainer">
+        <video id="mainVideo" controls autoplay style="width: 100%; height: auto;">
+            Votre navigateur ne supporte pas l'élément vidéo.
+        </video>
+        <div class="video-info-container" id="videoInfo">
+            <div id="videoTitle" class="title"></div>
+            <div style="display: flex;align-items: center;justify-content: space-between;">
+                <div id="videoChannel" class="channel"></div>
+                <div id="videoLikes" class="video-info" style="margin-left: 10px;"></div> <!-- Ajout d'un espace à gauche -->
+            </div>
+            <div class="description-full">
+            <div style="display: flex;align-items: center;justify-content: flex-start;">
+            <div id="videoViews"></div>
+            <div id="videoDate"></div>
+            </div>
+            <div id="videoDescription" class="description"></div>
+        </div>
+        </div>      
+    </div>     
+
+    <div class="sidebar hidden" id="sidebar">
+        <ul class="video-list" id="videoList">
+            <!-- Les vidéos seront listées ici -->
+        </ul>
+    </div>
+
+    <script>
+   const fileInput = document.getElementById('fileInput');
+const videoList = document.getElementById('videoList');
+const mainVideo = document.getElementById('mainVideo');
+const selectButton = document.getElementById('selectButton');
+const videoContainer = document.getElementById('videoContainer');
+const sidebar = document.getElementById('sidebar');
+const videoTitle = document.getElementById('videoTitle');
+const videoChannel = document.getElementById('videoChannel');
+const videoLikes = document.getElementById('videoLikes');
+const videoViews = document.getElementById('videoViews');
+const videoDate = document.getElementById('videoDate');
+const videoDescription = document.getElementById('videoDescription');
+
+let videos = [];
+let thumbnails = {};
+let metadata = {};
+
+function isValidVideoFile(file) {
+    const validExtensions = ['webm', 'mp4'];
+    const fileExtension = file.name.split('.').pop().toLowerCase();
+    return validExtensions.includes(fileExtension);
+}
+
+function isWebPFile(file) {
+    return file.name.endsWith('.webp');
+}
+
+function loadVideoMetadata(videoFile) {
+    const jsonFile = videoFile.replace('.webm', '.json');
+
+    fetch(jsonFile)
+        .then(response => response.json())
+        .then(data => {
+            // Mettre à jour les informations de la vidéo
+            videoTitle.innerText = data.title; // Titre de la vidéo
+            videoChannel.innerText = data.channel; // Chaîne
+            videoDescription.innerHTML = data.description.replace(/\n/g, '<br>'); // Respecter les sauts de ligne
+
+            // Formatage des vues et likes
+            const views = data.view_count.toLocaleString();
+            const likes = data.like_count.toLocaleString();
+            videoViews.innerText = `${views} vues`;
+            videoLikes.innerText = `${likes} Likes`;
+
+            // Formatage de la date
+            const formattedDate = formatDate(data.release_date);
+            videoDate.innerText = ` ${formattedDate}`;
+
+            // Charger la vidéo
+            mainVideo.src = videoFile;
+            mainVideo.play();
+        })
+        .catch(error => console.error('Erreur lors du chargement des métadonnées :', error));
+}
+
+function loadMetadata(files) {
+    return new Promise((resolve) => {
+        const metadataPromises = [];
+        for (const file of files) {
+            if (file.name.endsWith('.json')) {
+                const reader = new FileReader();
+                const promise = new Promise((res) => {
+                    reader.onload = function(event) {
+                        const jsonData = JSON.parse(event.target.result);
+                        // Assurez-vous que le nom du fichier vidéo est correctement associé aux métadonnées
+                        metadata[file.name.replace('.json', '.webm')] = jsonData;
+                        res();
+                    };
+                    reader.readAsText(file);
+                });
+                metadataPromises.push(promise);
+            }
+        }
+        Promise.all(metadataPromises).then(resolve);
+    });
+}
+
+fileInput.addEventListener('change', function(event) {
+    const files = event.target.files;
+    if (files.length > 0) {
+        videoContainer.classList.remove('hidden');
+        sidebar.classList.remove('hidden');
+        selectButton.style.display = 'none'; // Cache le bouton après sélection
+    }
+    videoList.innerHTML = '';
+    videos = [];
+    thumbnails = {};
+    metadata = {};
+
+    loadMetadata(files).then(() => {
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (isValidVideoFile(file)) {
+                const videoURL = URL.createObjectURL(file);
+                videos.push({ name: file.name, url: videoURL });
+            }
+            if (isWebPFile(file)) {
+                const videoBaseName = file.name.replace('.webp', '.webm');
+                thumbnails[videoBaseName] = URL.createObjectURL(file);
+            }
+        }
+        displayVideos();
+    });
+});
+
+function displayVideos() {
+    videos.forEach(video => {
+        const listItem = document.createElement('li');
+        listItem.className = 'video-item';
+
+        const previewContainer = document.createElement('div');
+        previewContainer.className = 'preview-container';
+
+        const preview = document.createElement('div');
+        preview.className = 'preview';
+        const videoElement = document.createElement('video');
+        videoElement.src = video.url;
+        videoElement.autoplay = true;
+        videoElement.loop = true;
+        videoElement.muted = true;
+        videoElement.style.width = '100%';
+        videoElement.style.height = '100%';
+        preview.appendChild(videoElement);
+        previewContainer.appendChild(preview);
+
+        const thumbnail = document.createElement('img');
+        thumbnail.className = 'preview-image';
+        thumbnail.src = thumbnails[video.name];
+        previewContainer.appendChild(thumbnail);
+
+        const videoMetadata = metadata[video.name];
+        const duration = videoMetadata ? formatDuration(videoMetadata.duration) : "N/A";
+        const title = videoMetadata ? videoMetadata.title : video.name;
+
+        const durationDiv = document.createElement('div');
+        durationDiv.className = 'video-duration';
+        durationDiv.textContent = duration;
+        previewContainer.appendChild(durationDiv);
+
+        const textContainer = document.createElement('div');
+        textContainer.className = 'text-container';
+
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'title video-title';
+        titleDiv.textContent = title;
+        textContainer.appendChild(titleDiv);
+
+        const channelDiv = document.createElement('div');
+        channelDiv.className = 'channel';
+        channelDiv.textContent = videoMetadata ? videoMetadata.channel : "N/A";
+        textContainer.appendChild(channelDiv);
+
+        // Informations supplémentaires : vues et date
+        const infoDiv = document.createElement('div');
+infoDiv.className = 'video-info';
+
+// Récupérer les informations et formater le texte
+const views = videoMetadata ? `${videoMetadata.view_count.toLocaleString()} vues` : "N/A vues";
+const date = videoMetadata ? formatDate(videoMetadata.release_date) : "N/A date";
+
+// Combiner les informations avec un point entre les deux
+infoDiv.textContent = `${views} • ${date}`; // Utilise un point centré pour les distinguer
+
+// Ajouter l'élément combiné au conteneur de texte
+textContainer.appendChild(infoDiv);
+
+
+
+        listItem.appendChild(previewContainer);
+        listItem.appendChild(textContainer);
+        videoList.appendChild(listItem);
+
+        // Gestion des événements pour la prévisualisation
+        listItem.addEventListener('mouseover', () => {
+            preview.style.display = 'block'; // Affiche la prévisualisation
+        });
+
+        listItem.addEventListener('mouseout', () => {
+            preview.style.display = 'none'; // Cache la prévisualisation
+        });
+
+        // Événement de clic pour jouer la vidéo principale
+        listItem.addEventListener('click', () => {
+            // Mettre à jour la source et jouer la vidéo
+            mainVideo.src = video.url;
+            mainVideo.play(); // Assurez-vous que la vidéo est jouée
+            videoTitle.textContent = title;
+            videoChannel.textContent = videoMetadata ? videoMetadata.channel : "N/A";
+            videoLikes.textContent = videoMetadata ? `${videoMetadata.like_count.toLocaleString()} Likes` : "N/A Likes";
+            videoViews.textContent = videoMetadata ? `${videoMetadata.view_count.toLocaleString()} Vues` : "N/A Vues";
+            videoDate.textContent = videoMetadata ? ` ${formatDate(videoMetadata.release_date)}` : "N/A Date";
+            videoDescription.innerHTML = videoMetadata ? videoMetadata.description.replace(/\n/g, '<br>') : "Aucune description disponible.";
+        });
+    });
+}
+
+function formatDuration(duration) {
+    const minutes = Math.floor(duration / 60);
+    const seconds = Math.floor(duration % 60);
+    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+}
+
+function formatDate(releaseDate) {
+    const now = new Date();
+    const videoDate = new Date(releaseDate);
+    const diffInSeconds = Math.floor((now - videoDate) / 1000);
+    
+    const days = Math.floor(diffInSeconds / (3600 * 24));
+    const weeks = Math.floor(days / 7);
+    const months = Math.floor(days / 30);
+    const years = Math.floor(days / 365);
+
+    if (days === 0) return " Aujourd'hui";
+    if (days === 1) return " Hier";
+    if (days < 7) return ` Il y a ${days} jours`;
+    if (weeks < 5) return ` Il y a ${weeks} semaines`;
+    if (months < 12) return ` Il y a ${months} mois`;
+    return ` Il y a ${years} ans`;
+}
+    </script>
+</body>
+</html>
