@@ -3,26 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Compteur de visites</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin-top: 50px;
-        }
-        h1 {
-            font-size: 2.5em;
-            color: #333;
-        }
-        p {
-            font-size: 1.2em;
-        }
-    </style>
+    <title>Compteur de Connexions</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Personnes connectées : <span id="counter">1</span></h1>
-    <p>Le compteur est simulé avec sessionStorage (durée : session du navigateur).</p>
+    <div class="container">
+        <h1>Personnes connectées</h1>
+        <div class="counter-box">
+            <span id="counter">1</span>
+        </div>
+        <p class="note">Le compteur est basé sur la session actuelle (sessionStorage).</p>
+    </div>
     <script src="script.js"></script>
 </body>
 </html>
-# page
